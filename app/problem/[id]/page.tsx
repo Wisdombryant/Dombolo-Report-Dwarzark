@@ -1,18 +1,50 @@
 "use client"
 
-import { use } from "react"
+import { useEffect, useState } from "react"
 import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { MapPin, Calendar, User, MessageSquare, ArrowLeft } from "lucide-react"
-import { useProblemStore } from "@/lib/store"
 import { UpvoteButton } from "@/components/upvote-button"
 import Link from "next/link"
+import type { Problem } from "@/lib/types"
 
-export default function ProblemDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params)
-  const problem = useProblemStore((state) => state.problems.find((p) => p.id === id))
+export default function ProblemDetailPage({ params }: { params: { id: string } }) {
+  const [problem, setProblem] = useState<Problem | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchProblem() {
+      try {
+        const response = await fetch(`/api/problems/${params.id}`)
+        if (response.ok) {
+          const data = await response.json()
+          setProblem(data)
+        } else {
+          setProblem(null)
+        }
+      } catch (error) {
+        console.error("[v0] Error fetching problem:", error)
+        setProblem(null)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchProblem()
+  }, [params.id])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navigation />
+        <div className="container mx-auto px-4 py-16 text-center">
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (!problem) {
     return (

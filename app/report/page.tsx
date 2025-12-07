@@ -1,10 +1,10 @@
 "use client"
 
 import type React from "react"
-
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Navigation } from "@/components/navigation"
+import { VoiceRecorder } from "@/components/voice-recorder"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,30 +12,36 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Camera, Video, Mic, MapPin, FileText, Upload, CheckCircle2, Loader2 } from "lucide-react"
+import { Camera, Video, FileText, MapPin, Upload, CheckCircle2, Loader2 } from "lucide-react"
 
 export default function ReportPage() {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [location, setLocation] = useState<string>("")
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null)
   const [isGettingLocation, setIsGettingLocation] = useState(false)
 
   const photoInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
-  const audioInputRef = useRef<HTMLInputElement>(null)
   const documentInputRef = useRef<HTMLInputElement>(null)
 
   const [uploadedFiles, setUploadedFiles] = useState<{
     photos: File[]
     videos: File[]
-    audio: File[]
     documents: File[]
   }>({
     photos: [],
     videos: [],
-    audio: [],
     documents: [],
+  })
+
+  const [audioRecording, setAudioRecording] = useState<{
+    blob: Blob | null
+    transcription: string
+  }>({
+    blob: null,
+    transcription: "",
   })
 
   const [formData, setFormData] = useState({
@@ -45,17 +51,13 @@ export default function ReportPage() {
     language: "english",
   })
 
-  const handleFileUpload = (type: "photos" | "videos" | "audio" | "documents", files: FileList | null) => {
+  const handleFileUpload = (type: "photos" | "videos" | "documents", files: FileList | null) => {
     if (files && files.length > 0) {
       const newFiles = Array.from(files)
       setUploadedFiles((prev) => ({
         ...prev,
         [type]: [...prev[type], ...newFiles],
       }))
-      console.log(
-        `[v0] ${type} uploaded:`,
-        newFiles.map((f) => f.name),
-      )
     }
   }
 
@@ -64,20 +66,22 @@ export default function ReportPage() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const lat = position.coords.latitude.toFixed(6)
-          const lng = position.coords.longitude.toFixed(6)
-          setLocation(`${lat}, ${lng}`)
+          const lat = position.coords.latitude
+          const lng = position.coords.longitude
+          setCoordinates({ lat, lng })
+          setLocation(`${lat.toFixed(6)}, ${lng.toFixed(6)}`)
           setIsGettingLocation(false)
-          console.log("[v0] GPS coordinates captured:", lat, lng)
         },
         (error) => {
           console.error("[v0] Geolocation error:", error)
           // Fallback to Dwarzark approximate location
+          setCoordinates({ lat: 8.4657, lng: -13.2317 })
           setLocation("8.4657, -13.2317 (Dwarzark, Freetown)")
           setIsGettingLocation(false)
         },
       )
     } else {
+      setCoordinates({ lat: 8.4657, lng: -13.2317 })
       setLocation("8.4657, -13.2317 (Dwarzark, Freetown)")
       setIsGettingLocation(false)
     }
@@ -87,19 +91,51 @@ export default function ReportPage() {
     e.preventDefault()
     setIsSubmitting(true)
 
-    // Simulate form submission with blockchain transaction
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    try {
+      const payload = {
+        title: formData.title,
+        description: formData.description || audioRecording.transcription,
+        category: formData.category,
+        locationName: location,
+        latitude: coordinates?.lat?.toString(),
+        longitude: coordinates?.lng?.toString(),
+        language: formData.language,
+        audioBlob: audioRecording.blob ? "audio_blob_placeholder" : null,
+        audioTranscription: audioRecording.transcription,
+        photos: uploadedFiles.photos.map((f) => f.name),
+        videos: uploadedFiles.videos.map((f) => f.name),
+        documents: uploadedFiles.documents.map((f) => f.name),
+      }
 
-    console.log("[v0] Problem report submitted:", formData)
-    console.log("[v0] Uploaded files:", uploadedFiles)
-    console.log("[v0] Blockchain transaction recorded")
+      const response = await fetch("/api/problems", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
 
-    setIsSubmitting(false)
-    setIsSuccess(true)
+      if (!response.ok) throw new Error("Failed to submit report")
 
-    setTimeout(() => {
-      router.push("/dashboard")
-    }, 2000)
+      const result = await response.json()
+      console.log("[v0] Problem report submitted:", result)
+
+      setIsSubmitting(false)
+      setIsSuccess(true)
+
+      setTimeout(() => {
+        router.push(`/problem/${result.problem.id}`)
+      }, 2000)
+    } catch (error) {
+      console.error("[v0] Error submitting report:", error)
+      setIsSubmitting(false)
+      alert("Failed to submit report. Please try again.")
+    }
+  }
+
+  const handleRecordingComplete = (blob: Blob, transcription: string) => {
+    setAudioRecording({ blob, transcription })
+    if (!formData.description) {
+      setFormData({ ...formData, description: transcription })
+    }
   }
 
   if (isSuccess) {
@@ -117,7 +153,9 @@ export default function ReportPage() {
                 Your report has been recorded on the blockchain and will be visible to the community shortly. Thank you
                 for helping improve Dwarzark!
               </p>
-              <Button onClick={() => router.push("/dashboard")}>View All Reports</Button>
+              <Button onClick={() => router.push("/dashboard")} variant="secondary">
+                View All Reports
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -132,7 +170,7 @@ export default function ReportPage() {
       <div className="container mx-auto px-4 py-8 md:py-12">
         <div className="max-w-3xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-3">Report a Problem</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-3 text-balance">Report a Problem</h1>
             <p className="text-muted-foreground text-lg leading-relaxed">
               Help improve our community by reporting local issues. Your report will be reviewed and shared with the
               community.
@@ -160,10 +198,13 @@ export default function ReportPage() {
                     <SelectItem value="mende">Mende</SelectItem>
                     <SelectItem value="limba">Limba</SelectItem>
                     <SelectItem value="themne">Themne</SelectItem>
+                    <SelectItem value="fullah">Fullah</SelectItem>
                   </SelectContent>
                 </Select>
               </CardContent>
             </Card>
+
+            <VoiceRecorder language={formData.language} onRecordingComplete={handleRecordingComplete} />
 
             {/* Basic Information */}
             <Card>
@@ -207,6 +248,9 @@ export default function ReportPage() {
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   />
+                  {audioRecording.transcription && (
+                    <p className="text-xs text-muted-foreground mt-2">Auto-filled from voice recording</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -215,7 +259,7 @@ export default function ReportPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Add Media (Optional)</CardTitle>
-                <CardDescription>Photos, videos, or audio recordings help provide context</CardDescription>
+                <CardDescription>Photos, videos, or documents help provide context</CardDescription>
               </CardHeader>
               <CardContent>
                 <input
@@ -235,14 +279,6 @@ export default function ReportPage() {
                   onChange={(e) => handleFileUpload("videos", e.target.files)}
                 />
                 <input
-                  ref={audioInputRef}
-                  type="file"
-                  accept="audio/*"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleFileUpload("audio", e.target.files)}
-                />
-                <input
                   ref={documentInputRef}
                   type="file"
                   accept=".pdf,.doc,.docx"
@@ -251,7 +287,7 @@ export default function ReportPage() {
                   onChange={(e) => handleFileUpload("documents", e.target.files)}
                 />
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <Button
                     type="button"
                     variant="outline"
@@ -284,20 +320,6 @@ export default function ReportPage() {
                     type="button"
                     variant="outline"
                     className="h-24 flex-col gap-2 bg-transparent relative"
-                    onClick={() => audioInputRef.current?.click()}
-                  >
-                    <Mic className="h-6 w-6" />
-                    <span className="text-xs">Audio</span>
-                    {uploadedFiles.audio.length > 0 && (
-                      <Badge variant="secondary" className="absolute top-2 right-2">
-                        {uploadedFiles.audio.length}
-                      </Badge>
-                    )}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-24 flex-col gap-2 bg-transparent relative"
                     onClick={() => documentInputRef.current?.click()}
                   >
                     <FileText className="h-6 w-6" />
@@ -309,9 +331,6 @@ export default function ReportPage() {
                     )}
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mt-4 leading-relaxed">
-                  Audio recordings will be automatically transcribed from {formData.language} to English
-                </p>
               </CardContent>
             </Card>
 
@@ -324,12 +343,12 @@ export default function ReportPage() {
               <CardContent className="space-y-4">
                 <div className="flex gap-2">
                   <Input placeholder="GPS coordinates will appear here" value={location} readOnly />
-                  <Button type="button" onClick={getLocation} disabled={isGettingLocation}>
+                  <Button type="button" onClick={getLocation} disabled={isGettingLocation} variant="secondary">
                     {isGettingLocation ? <Loader2 className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />}
                   </Button>
                 </div>
                 {location && (
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="bg-accent/10 text-accent-foreground">
                     <MapPin className="h-3 w-3 mr-1" />
                     Location captured
                   </Badge>
@@ -351,7 +370,7 @@ export default function ReportPage() {
                     </p>
                   </div>
                 </div>
-                <Button type="submit" className="w-full" size="lg" disabled={isSubmitting}>
+                <Button type="submit" className="w-full" size="lg" disabled={isSubmitting} variant="secondary">
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-5 w-5 animate-spin" />
