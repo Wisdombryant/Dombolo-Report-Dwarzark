@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Mic, Square, Play, Trash2, Loader2 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
+import { transcribeAudio } from "@/lib/transcription"
 
 interface VoiceRecorderProps {
   language: string
@@ -49,13 +50,27 @@ export function VoiceRecorder({ language, onRecordingComplete }: VoiceRecorderPr
         const url = URL.createObjectURL(blob)
         setAudioUrl(url)
 
-        // Simulate AI transcription
         setIsTranscribing(true)
-        const transcribedText = await simulateTranscription(language)
-        setTranscription(transcribedText)
-        setIsTranscribing(false)
+        try {
+          const result = await transcribeAudio(blob, language)
+          const displayText =
+            language === "english"
+              ? result.englishTranslation
+              : `${result.originalTranscription}\n(English: ${result.englishTranslation})`
+          setTranscription(displayText)
 
-        onRecordingComplete(blob, transcribedText)
+          console.log("[v0] Transcription completed:", {
+            language: result.originalLanguage,
+            original: result.originalTranscription,
+            translation: result.englishTranslation,
+          })
+
+          onRecordingComplete(blob, result.englishTranslation)
+        } catch (error) {
+          console.error("[v0] Transcription error:", error)
+        } finally {
+          setIsTranscribing(false)
+        }
 
         stream.getTracks().forEach((track) => track.stop())
       }
@@ -97,24 +112,6 @@ export function VoiceRecorder({ language, onRecordingComplete }: VoiceRecorderPr
     setAudioUrl(null)
     setTranscription("")
     setDuration(0)
-  }
-
-  const simulateTranscription = async (lang: string): Promise<string> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-
-    const mockTranscriptions: Record<string, string> = {
-      krio: "Di road nar mi area don bad. Wi nid help fiks am. (The road in my area is damaged. We need help to fix it.)",
-      mende: "Ngila yɛlɛ ma kɔɔ wɔ. A lo ya lɔ kpɛ. (The water system is broken. It needs to be fixed.)",
-      limba:
-        "Kanthabon ke fa banta kondaa. Ma na yɔŋo kɛ fa banta. (The street light is not working. We need it fixed.)",
-      themne: "A kath ka yɔnth a banta ra. Ma yɔnth kɛ sɔsɔ. (The bridge is damaged. We need repairs.)",
-      english: "There is a major pothole on Main Street that needs urgent attention.",
-    }
-
-    return (
-      mockTranscriptions[lang.toLowerCase()] || "Audio recorded and transcribed: Please fix the issue in our community."
-    )
   }
 
   const formatDuration = (seconds: number) => {
@@ -172,14 +169,14 @@ export function VoiceRecorder({ language, onRecordingComplete }: VoiceRecorderPr
           {isTranscribing && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Transcribing audio from {language}...
+              Transcribing and translating audio from {language}...
             </div>
           )}
 
           {transcription && (
             <div className="rounded-lg bg-muted p-4">
               <p className="text-sm font-medium mb-2">Transcription:</p>
-              <p className="text-sm">{transcription}</p>
+              <p className="text-sm whitespace-pre-line">{transcription}</p>
             </div>
           )}
         </div>

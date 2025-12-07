@@ -3,8 +3,8 @@
 
 export interface TranscriptionResult {
   originalLanguage: string
-  transcribedText: string
-  translatedText: string
+  originalTranscription: string // Raw transcription in local language
+  englishTranslation: string // AI-generated English translation
   confidence: number
 }
 
@@ -12,7 +12,6 @@ export async function transcribeAudio(audioBlob: Blob, language: string): Promis
   // Simulate API processing delay
   await new Promise((resolve) => setTimeout(resolve, 2000))
 
-  // Mock transcription based on language
   const mockTranscriptions: Record<string, { original: string; translated: string }> = {
     krio: {
       original: "Di road nar mi area don bad. Wi nid help fiks am.",
@@ -44,8 +43,8 @@ export async function transcribeAudio(audioBlob: Blob, language: string): Promis
 
   return {
     originalLanguage: language,
-    transcribedText: result.original,
-    translatedText: result.translated,
+    originalTranscription: result.original,
+    englishTranslation: result.translated,
     confidence: 0.95,
   }
 }

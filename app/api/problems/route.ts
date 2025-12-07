@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import crypto from "crypto"
+import { transcribeAudio } from "@/lib/transcription"
 
 export async function GET(request: Request) {
   try {
@@ -9,9 +10,15 @@ export async function GET(request: Request) {
     const status = searchParams.get("status")
     const sortBy = searchParams.get("sortBy") || "recent"
     const search = searchParams.get("search")
+    const isAdmin = searchParams.get("isAdmin") === "true"
 
     const supabase = await createClient()
-    let query = supabase.from("problems").select("*")
+
+    const selectFields = isAdmin
+      ? "*" // Admin gets all fields including original_transcription and english_translation
+      : "id, title, description, category, status, location_name, latitude, longitude, upvotes, photos, videos, audio, documents, reporter_language, blockchain_hash, created_at, updated_at"
+
+    let query = supabase.from("problems").select(selectFields)
 
     if (category && category !== "all") {
       query = query.eq("category", category)
@@ -54,7 +61,6 @@ export async function POST(request: Request) {
       longitude,
       language,
       audioBlob,
-      audioTranscription,
       photos,
       videos,
       documents,
@@ -62,32 +68,45 @@ export async function POST(request: Request) {
 
     const supabase = await createClient()
 
+    let originalTranscription = null
+    let englishTranslation = null
+    const reporterLanguage = language || "english"
+
+    if (audioBlob) {
+      // In production, you would process the actual audio blob
+      // For now, simulate transcription based on language
+      const mockAudioBlob = new Blob(["mock audio"], { type: "audio/wav" })
+      const transcriptionResult = await transcribeAudio(mockAudioBlob, reporterLanguage)
+
+      originalTranscription = transcriptionResult.originalTranscription
+      englishTranslation = transcriptionResult.englishTranslation
+
+      console.log("[v0] Transcription completed:", {
+        language: reporterLanguage,
+        original: originalTranscription,
+        translated: englishTranslation,
+      })
+    }
+
     // Generate blockchain hash
     const blockchainHash = crypto.createHash("sha256").update(`${title}-${Date.now()}`).digest("hex")
-
-    // In production, upload media files to Supabase Storage
-    // For now, use placeholder URLs
-    const mediaUrls = {
-      photos: photos || [],
-      videos: videos || [],
-      audio: audioBlob ? ["audio_url_placeholder"] : [],
-      documents: documents || [],
-    }
 
     const { data, error } = await supabase
       .from("problems")
       .insert({
         title: title || "Untitled Report",
-        description: description || audioTranscription || "",
-        category: category || "other",
+        description: description || englishTranslation || originalTranscription || "",
+        category: category || "infrastructure",
         location_name: locationName,
         latitude: latitude ? Number.parseFloat(latitude) : null,
         longitude: longitude ? Number.parseFloat(longitude) : null,
-        photos: mediaUrls.photos,
-        videos: mediaUrls.videos,
-        audio: mediaUrls.audio,
-        documents: mediaUrls.documents,
-        language: language || "english",
+        photos: photos || [],
+        videos: videos || [],
+        audio: audioBlob ? ["audio_placeholder.wav"] : [],
+        documents: documents || [],
+        reporter_language: reporterLanguage,
+        original_transcription: originalTranscription,
+        english_translation: englishTranslation,
         blockchain_hash: blockchainHash,
         upvotes: 0,
         status: "reported",
@@ -96,6 +115,8 @@ export async function POST(request: Request) {
       .single()
 
     if (error) throw error
+
+    console.log("[v0] Problem created successfully with language data:", data.id)
 
     return NextResponse.json({ problem: data, blockchainHash }, { status: 201 })
   } catch (error) {

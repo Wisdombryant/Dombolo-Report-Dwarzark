@@ -2,17 +2,16 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getProblems } from "@/lib/actions/problems"
 import { updateProblemStatus } from "@/lib/actions/admin"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
-import { Search, Filter, ExternalLink, Loader2 } from "lucide-react"
+import { Search, Filter, ExternalLink, Loader2, Languages } from "lucide-react"
 import { format } from "date-fns"
 
-interface Problem {
+interface AdminProblem {
   id: string
   title: string
   category: string
@@ -20,11 +19,14 @@ interface Problem {
   upvotes: number
   created_at: string
   location_name: string
+  reporter_language?: string
+  original_transcription?: string
+  english_translation?: string
 }
 
 export function AdminProblemsTable() {
   const router = useRouter()
-  const [problems, setProblems] = useState<Problem[]>([])
+  const [problems, setProblems] = useState<AdminProblem[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
@@ -37,14 +39,18 @@ export function AdminProblemsTable() {
 
   async function fetchProblems() {
     try {
-      const data = await getProblems({
-        category: categoryFilter !== "all" ? categoryFilter : undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
-        sortBy: "recent",
-      })
-      setProblems(data as Problem[])
+      const params = new URLSearchParams()
+      if (categoryFilter !== "all") params.append("category", categoryFilter)
+      if (statusFilter !== "all") params.append("status", statusFilter)
+
+      const response = await fetch(`/api/admin/problems?${params.toString()}`)
+      if (!response.ok) throw new Error("Failed to fetch problems")
+
+      const data = await response.json()
+      setProblems(data.problems)
+      console.log("[v0] Admin fetched problems with language data")
     } catch (error) {
-      console.error("Failed to fetch problems:", error)
+      console.error("[v0] Failed to fetch problems:", error)
     } finally {
       setLoading(false)
     }
@@ -57,7 +63,7 @@ export function AdminProblemsTable() {
       await fetchProblems()
       router.refresh()
     } catch (error) {
-      console.error("Failed to update status:", error)
+      console.error("[v0] Failed to update status:", error)
     } finally {
       setUpdatingStatus(null)
     }
@@ -69,7 +75,7 @@ export function AdminProblemsTable() {
     switch (status) {
       case "reported":
         return "bg-blue-500/10 text-blue-500"
-      case "in-progress":
+      case "in_progress":
         return "bg-yellow-500/10 text-yellow-500"
       case "resolved":
         return "bg-green-500/10 text-green-500"
@@ -115,7 +121,7 @@ export function AdminProblemsTable() {
           <SelectContent>
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="reported">Reported</SelectItem>
-            <SelectItem value="in-progress">In Progress</SelectItem>
+            <SelectItem value="in_progress">In Progress</SelectItem>
             <SelectItem value="resolved">Resolved</SelectItem>
           </SelectContent>
         </Select>
@@ -128,6 +134,7 @@ export function AdminProblemsTable() {
             <TableRow>
               <TableHead>Title</TableHead>
               <TableHead>Category</TableHead>
+              <TableHead>Language</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Upvotes</TableHead>
               <TableHead>Date</TableHead>
@@ -138,18 +145,29 @@ export function AdminProblemsTable() {
           <TableBody>
             {filteredProblems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
                   No reports found
                 </TableCell>
               </TableRow>
             ) : (
               filteredProblems.map((problem) => (
                 <TableRow key={problem.id}>
-                  <TableCell className="font-medium">{problem.title}</TableCell>
+                  <TableCell className="font-medium max-w-xs truncate">{problem.title}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className="capitalize">
                       {problem.category}
                     </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Languages className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs capitalize">{problem.reporter_language || "english"}</span>
+                      {problem.english_translation && (
+                        <Badge variant="secondary" className="text-xs">
+                          Translated
+                        </Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{problem.location_name}</TableCell>
                   <TableCell>
@@ -169,7 +187,7 @@ export function AdminProblemsTable() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="reported">Reported</SelectItem>
-                        <SelectItem value="in-progress">In Progress</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
                         <SelectItem value="resolved">Resolved</SelectItem>
                       </SelectContent>
                     </Select>
