@@ -17,7 +17,10 @@ export default function HomePage() {
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10 border-b">
-        <div className="container mx-auto px-4 py-16 md:py-24">
+        <div className="absolute inset-0 overflow-hidden opacity-10">
+          <img src="/aerial-view-of-freetown-sierra-leone-community-dwa.jpg" alt="Dwarzark Community" className="w-full h-full object-cover" />
+        </div>
+        <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
           <div className="max-w-4xl mx-auto text-center space-y-6">
             <Badge variant="secondary" className="text-sm">
               Dwarzark Community • Freetown

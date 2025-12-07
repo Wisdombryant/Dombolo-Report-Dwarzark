@@ -12,6 +12,9 @@ import { updateProblemStatus } from "@/lib/actions/admin"
 import { ArrowLeft, MapPin, Calendar, ThumbsUp, Globe, Languages, Shield, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import type { AdminProblem } from "@/lib/types"
+import { SeverityBadge } from "./severity-badge"
+import { AdminOverrideControl } from "./admin-override-control"
+import type { SeverityLevel } from "@/lib/utils/severity"
 
 interface AdminProblemDetailProps {
   problemId: string
@@ -107,13 +110,17 @@ export function AdminProblemDetail({ problemId }: AdminProblemDetailProps) {
             <Card>
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div className="space-y-2">
+                  <div className="space-y-2 flex-1">
                     <CardTitle className="text-2xl">{problem.title}</CardTitle>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <Badge variant="outline" className="capitalize">
                         {problem.category}
                       </Badge>
                       <Badge className={getStatusColor(problem.status)}>{problem.status}</Badge>
+                      <SeverityBadge
+                        upvotes={problem.upvotes}
+                        adminOverride={problem.admin_priority_override as SeverityLevel | null}
+                      />
                     </div>
                   </div>
                 </div>
@@ -229,6 +236,23 @@ export function AdminProblemDetail({ problemId }: AdminProblemDetailProps) {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Priority Management</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-3">Override the automatic priority based on upvotes</p>
+                  <AdminOverrideControl
+                    problemId={problem.id}
+                    currentOverride={problem.admin_priority_override as SeverityLevel | null}
+                    currentReason={problem.admin_override_reason}
+                    onUpdate={fetchProblem}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Status Management */}
             <Card>
               <CardHeader>

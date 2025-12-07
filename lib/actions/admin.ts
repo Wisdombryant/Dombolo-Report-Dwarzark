@@ -60,6 +60,59 @@ export async function updateProblemStatus(problemId: string, status: string) {
   return { success: true }
 }
 
+export async function updateAdminPriorityOverride(
+  problemId: string,
+  priorityLevel: "critical" | "high" | "moderate" | null,
+  reason: string | null,
+) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    throw new Error("Unauthorized")
+  }
+
+  // Verify admin role
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+
+  if (profile?.role !== "admin") {
+    throw new Error("Forbidden - Admin access required")
+  }
+
+  const updateData: any = {
+    admin_priority_override: priorityLevel,
+    admin_override_reason: reason,
+  }
+
+  if (priorityLevel) {
+    updateData.admin_override_by = user.id
+    updateData.admin_override_at = new Date().toISOString()
+  } else {
+    // Removing override
+    updateData.admin_override_by = null
+    updateData.admin_override_at = null
+  }
+
+  const { error } = await supabase.from("problems").update(updateData).eq("id", problemId)
+
+  if (error) {
+    console.error("[v0] Error updating priority override:", error)
+    throw error
+  }
+
+  console.log("[v0] Admin priority override updated:", priorityLevel ? `Set to ${priorityLevel}` : "Removed")
+
+  revalidatePath("/admin")
+  revalidatePath(`/admin/problems/${problemId}`)
+  revalidatePath("/dashboard")
+  revalidatePath(`/problem/${problemId}`)
+
+  return { success: true }
+}
+
 export async function getAdminNotes(problemId: string) {
   const supabase = await createClient()
 

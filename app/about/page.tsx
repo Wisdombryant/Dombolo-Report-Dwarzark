@@ -10,6 +10,14 @@ export default function AboutPage() {
 
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-4xl mx-auto">
+          <div className="mb-12 rounded-xl overflow-hidden border shadow-lg">
+            <img
+              src="/vibrant-freetown-sierra-leone-community-market-sce.jpg"
+              alt="Dwarzark Community"
+              className="w-full h-64 md:h-96 object-cover"
+            />
+          </div>
+
           <div className="mb-12 text-center">
             <Badge variant="secondary" className="mb-4">
               About Us

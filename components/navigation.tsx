@@ -115,9 +115,10 @@ export function Navigation() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link href="/auth/login">
+              <Link href="/admin/login">
                 <Button variant="outline" size="sm">
-                  Sign In
+                  <Shield className="h-4 w-4 mr-2" />
+                  Admin Sign In
                 </Button>
               </Link>
             )}
@@ -170,9 +171,10 @@ export function Navigation() {
                 Sign Out
               </Button>
             ) : (
-              <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
+              <Link href="/admin/login" onClick={() => setMobileMenuOpen(false)}>
                 <Button variant="outline" className="w-full bg-transparent">
-                  Sign In
+                  <Shield className="h-4 w-4 mr-2" />
+                  Admin Sign In
                 </Button>
               </Link>
             )}

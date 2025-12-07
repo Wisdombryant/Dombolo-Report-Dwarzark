@@ -12,7 +12,7 @@ export const mockProblems: Problem[] = [
     coordinates: { lat: 8.4657, lng: -13.2317 },
     upvotes: 47,
     comments: 8,
-    imageUrl: "/broken-street-light-at-night.jpg",
+    imageUrl: "/broken-street-light-in-freetown-sierra-leone-neigh.jpg",
     createdAt: "2024-01-15T10:30:00Z",
   },
   {
@@ -26,7 +26,7 @@ export const mockProblems: Problem[] = [
     coordinates: { lat: 8.4661, lng: -13.232 },
     upvotes: 89,
     comments: 15,
-    imageUrl: "/garbage-pile-in-urban-market-area.jpg",
+    imageUrl: "/garbage-piles-at-freetown-market-area-with-vendors.jpg",
     createdAt: "2024-01-14T14:20:00Z",
   },
   {
@@ -40,7 +40,7 @@ export const mockProblems: Problem[] = [
     coordinates: { lat: 8.4655, lng: -13.2325 },
     upvotes: 62,
     comments: 12,
-    imageUrl: "/large-pothole-on-road.jpg",
+    imageUrl: "/large-pothole-on-unpaved-road-in-freetown-sierra-l.jpg",
     createdAt: "2024-01-13T09:15:00Z",
   },
   {
@@ -53,7 +53,7 @@ export const mockProblems: Problem[] = [
     coordinates: { lat: 8.4659, lng: -13.2315 },
     upvotes: 73,
     comments: 9,
-    imageUrl: "/water-pipe-leak-flooding-street.jpg",
+    imageUrl: "/water-pipe-leak-flooding-street-in-freetown-commun.jpg",
     createdAt: "2024-01-12T16:45:00Z",
   },
   {
@@ -67,7 +67,7 @@ export const mockProblems: Problem[] = [
     coordinates: { lat: 8.4663, lng: -13.2318 },
     upvotes: 104,
     comments: 23,
-    imageUrl: "/busy-intersection-with-cars.jpg",
+    imageUrl: "/busy-intersection-in-freetown-with-poda-poda-buses.jpg",
     createdAt: "2024-01-11T11:30:00Z",
   },
   {
@@ -80,7 +80,7 @@ export const mockProblems: Problem[] = [
     coordinates: { lat: 8.4652, lng: -13.2322 },
     upvotes: 56,
     comments: 18,
-    imageUrl: "/blocked-drainage-system-flooding.jpg",
+    imageUrl: "/blocked-drainage-system-with-standing-water-in-fre.jpg",
     createdAt: "2024-01-10T08:00:00Z",
   },
   {
@@ -94,6 +94,7 @@ export const mockProblems: Problem[] = [
     coordinates: { lat: 8.466, lng: -13.2319 },
     upvotes: 41,
     comments: 6,
+    imageUrl: "/public-toilet-facility-in-need-of-maintenance-in-f.jpg",
     createdAt: "2024-01-09T13:20:00Z",
   },
   {
@@ -107,7 +108,7 @@ export const mockProblems: Problem[] = [
     coordinates: { lat: 8.4654, lng: -13.2328 },
     upvotes: 38,
     comments: 11,
-    imageUrl: "/abandoned-damaged-building.jpg",
+    imageUrl: "/abandoned-damaged-building-in-freetown-sierra-leon.jpg",
     createdAt: "2024-01-08T15:40:00Z",
   },
   {
@@ -120,6 +121,7 @@ export const mockProblems: Problem[] = [
     coordinates: { lat: 8.4658, lng: -13.2312 },
     upvotes: 127,
     comments: 34,
+    imageUrl: "/electricity-power-lines-in-freetown-sierra-leone-r.jpg",
     createdAt: "2024-01-07T10:10:00Z",
   },
   {
@@ -133,7 +135,7 @@ export const mockProblems: Problem[] = [
     coordinates: { lat: 8.4656, lng: -13.2314 },
     upvotes: 52,
     comments: 14,
-    imageUrl: "/broken-playground-equipment.jpg",
+    imageUrl: "/broken-playground-equipment-in-freetown-community-.jpg",
     createdAt: "2024-01-06T12:30:00Z",
   },
 ]

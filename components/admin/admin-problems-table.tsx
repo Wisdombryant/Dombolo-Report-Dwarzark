@@ -10,6 +10,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input"
 import { Search, Filter, ExternalLink, Loader2, Languages } from "lucide-react"
 import { format } from "date-fns"
+import { SeverityBadge } from "./severity-badge"
+import { AdminOverrideControl } from "./admin-override-control"
+import { getSeverityInfo, getSeverityRowColor, type SeverityLevel } from "@/lib/utils/severity"
 
 interface AdminProblem {
   id: string
@@ -22,6 +25,8 @@ interface AdminProblem {
   reporter_language?: string
   original_transcription?: string
   english_translation?: string
+  admin_priority_override?: SeverityLevel | null
+  admin_override_reason?: string | null
 }
 
 export function AdminProblemsTable() {
@@ -31,6 +36,7 @@ export function AdminProblemsTable() {
   const [searchQuery, setSearchQuery] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [statusFilter, setStatusFilter] = useState("all")
+  const [severityFilter, setSeverityFilter] = useState("all")
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
   useEffect(() => {
@@ -48,7 +54,7 @@ export function AdminProblemsTable() {
 
       const data = await response.json()
       setProblems(data.problems)
-      console.log("[v0] Admin fetched problems with language data")
+      console.log("[v0] Admin fetched problems with severity data")
     } catch (error) {
       console.error("[v0] Failed to fetch problems:", error)
     } finally {
@@ -69,7 +75,24 @@ export function AdminProblemsTable() {
     }
   }
 
-  const filteredProblems = problems.filter((problem) => problem.title.toLowerCase().includes(searchQuery.toLowerCase()))
+  const filteredProblems = problems
+    .filter((problem) => problem.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter((problem) => {
+      if (severityFilter === "all") return true
+      const severity = getSeverityInfo(problem.upvotes, problem.admin_priority_override)
+      return severity.level === severityFilter
+    })
+    .sort((a, b) => {
+      // Sort by severity: critical > high > moderate, then by upvotes
+      const aSeverity = getSeverityInfo(a.upvotes, a.admin_priority_override)
+      const bSeverity = getSeverityInfo(b.upvotes, b.admin_priority_override)
+
+      const severityOrder = { critical: 3, high: 2, moderate: 1 }
+      const severityDiff = severityOrder[bSeverity.level] - severityOrder[aSeverity.level]
+
+      if (severityDiff !== 0) return severityDiff
+      return b.upvotes - a.upvotes
+    })
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -101,6 +124,18 @@ export function AdminProblemsTable() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+        <Select value={severityFilter} onValueChange={setSeverityFilter}>
+          <SelectTrigger className="w-full md:w-[200px]">
+            <Filter className="h-4 w-4 mr-2" />
+            <SelectValue placeholder="Severity" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Severities</SelectItem>
+            <SelectItem value="critical">Critical</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="moderate">Moderate</SelectItem>
+          </SelectContent>
+        </Select>
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-full md:w-[200px]">
             <Filter className="h-4 w-4 mr-2" />
@@ -132,6 +167,7 @@ export function AdminProblemsTable() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>Severity</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Category</TableHead>
               <TableHead>Language</TableHead>
@@ -139,66 +175,87 @@ export function AdminProblemsTable() {
               <TableHead>Upvotes</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Priority</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredProblems.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
                   No reports found
                 </TableCell>
               </TableRow>
             ) : (
-              filteredProblems.map((problem) => (
-                <TableRow key={problem.id}>
-                  <TableCell className="font-medium max-w-xs truncate">{problem.title}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="capitalize">
-                      {problem.category}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Languages className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs capitalize">{problem.reporter_language || "english"}</span>
-                      {problem.english_translation && (
-                        <Badge variant="secondary" className="text-xs">
-                          Translated
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{problem.location_name}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{problem.upvotes}</Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {format(new Date(problem.created_at), "MMM d, yyyy")}
-                  </TableCell>
-                  <TableCell>
-                    <Select
-                      value={problem.status}
-                      onValueChange={(value) => handleStatusChange(problem.id, value)}
-                      disabled={updatingStatus === problem.id}
-                    >
-                      <SelectTrigger className={`w-[140px] ${getStatusColor(problem.status)}`}>
-                        {updatingStatus === problem.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <SelectValue />}
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="reported">Reported</SelectItem>
-                        <SelectItem value="in_progress">In Progress</SelectItem>
-                        <SelectItem value="resolved">Resolved</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/problems/${problem.id}`)}>
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              filteredProblems.map((problem) => {
+                const severity = getSeverityInfo(problem.upvotes, problem.admin_priority_override)
+                return (
+                  <TableRow key={problem.id} className={getSeverityRowColor(severity.level)}>
+                    <TableCell>
+                      <SeverityBadge upvotes={problem.upvotes} adminOverride={problem.admin_priority_override} />
+                    </TableCell>
+                    <TableCell className="font-medium max-w-xs truncate">{problem.title}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize">
+                        {problem.category}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Languages className="h-3 w-3 text-muted-foreground" />
+                        <span className="text-xs capitalize">{problem.reporter_language || "english"}</span>
+                        {problem.english_translation && (
+                          <Badge variant="secondary" className="text-xs">
+                            Translated
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">{problem.location_name}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="font-semibold">
+                        {problem.upvotes}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {format(new Date(problem.created_at), "MMM d, yyyy")}
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={problem.status}
+                        onValueChange={(value) => handleStatusChange(problem.id, value)}
+                        disabled={updatingStatus === problem.id}
+                      >
+                        <SelectTrigger className={`w-[140px] ${getStatusColor(problem.status)}`}>
+                          {updatingStatus === problem.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <SelectValue />
+                          )}
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="reported">Reported</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="resolved">Resolved</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <AdminOverrideControl
+                        problemId={problem.id}
+                        currentOverride={problem.admin_priority_override}
+                        currentReason={problem.admin_override_reason}
+                        onUpdate={fetchProblems}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/problems/${problem.id}`)}>
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                )
+              })
             )}
           </TableBody>
         </Table>

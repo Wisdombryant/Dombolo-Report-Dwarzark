@@ -52,7 +52,7 @@ export function ProblemCard({ problem }: ProblemCardProps) {
         </div>
       </CardContent>
       <CardFooter className="flex items-center justify-between gap-4 border-t pt-4">
-        <UpvoteButton problemId={problem.id} currentUpvotes={problem.upvotes} />
+        <UpvoteButton problemId={problem.id} currentUpvotes={problem.upvotes} variant="compact" />
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <MessageSquare className="h-4 w-4" />
           <span>{problem.comments || 0}</span>

@@ -5,7 +5,7 @@ import { Navigation } from "@/components/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Calendar, User, MessageSquare, ArrowLeft } from "lucide-react"
+import { MapPin, Calendar, User, MessageSquare, ArrowLeft, Shield } from "lucide-react"
 import { UpvoteButton } from "@/components/upvote-button"
 import Link from "next/link"
 import type { Problem } from "@/lib/types"
@@ -137,6 +137,19 @@ export default function ProblemDetailPage({ params }: { params: { id: string } }
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   Show support for this issue by upvoting. All votes are blockchain-verified for transparency.
                 </p>
+                {problem.blockchain_hash && (
+                  <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <Shield className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-green-700">Report Verified</p>
+                        <p className="text-xs text-green-600 font-mono break-all mt-1">
+                          {problem.blockchain_hash.substring(0, 24)}...
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
